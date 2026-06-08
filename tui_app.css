@@ -1,0 +1,167 @@
+
+
+Screen {
+    background: #11111b;
+    color: #cdd6f4;
+}
+
+Header {
+    background: #181825;
+    color: #89b4fa;
+    text-style: bold;
+    border-bottom: tall #313244;
+}
+
+Footer {
+    background: #181825;
+    color: #a6e3a1;
+}
+
+Footer > .footer--key {
+    background: #313244;
+    color: #f9e2af;
+    text-style: bold;
+}
+
+Footer > .footer--highlight {
+    background: #89b4fa;
+    color: #11111b;
+}
+
+#sidebar {
+    width: 32;
+    background: #181825;
+    border-right: tall #313244;
+    color: #cdd6f4;
+    dock: left;
+}
+
+#sidebar:focus {
+    border-right: tall #89b4fa;
+}
+
+#editor-container {
+    width: 1fr;
+    background: #1e1e2e;
+    padding: 0;
+    border: none;
+}
+
+#editor {
+    height: 100%;
+    width: 100%;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border: none;
+}
+
+#editor:focus {
+    border: none;
+}
+
+#preview {
+    display: none;
+    width: 100%;
+    height: 1fr;
+    background: #181825;
+    color: #cdd6f4;
+    padding: 1 2;
+    overflow-y: scroll;
+}
+
+#preview:focus {
+    background: #1e1e2e;
+}
+
+
+MarkdownH1 {
+    color: #f38ba8;
+    text-style: bold;
+    margin: 1 0;
+    text-align: center;
+}
+
+MarkdownH2 {
+    color: #fab387;
+    text-style: bold;
+    margin: 1 0;
+}
+
+MarkdownH3 {
+    color: #f9e2af;
+    text-style: bold;
+}
+
+MarkdownBullet {
+    color: #a6e3a1;
+}
+
+MarkdownBlockQuote {
+    background: #313244;
+    color: #bac2de;
+    border-left: solid #a6e3a1;
+    padding-left: 2;
+}
+
+#search-input {
+    display: none;
+    background: #181825;
+    color: #cdd6f4;
+    border: tall #313244;
+    margin: 0;
+    height: 3;
+}
+
+#search-input:focus {
+    border: tall #89b4fa;
+}
+
+#tabs-bar {
+    background: #181825;
+    border-bottom: tall #313244;
+    height: 3;
+    min-height: 3;
+    max-height: 3;
+}
+
+Tab {
+    background: #181825;
+    color: #bac2de;
+    border: none;
+    padding: 0 2;
+}
+
+Tab:hover {
+    background: #313244;
+    color: #cdd6f4;
+}
+
+Tab.--active {
+    background: #1e1e2e;
+    color: #a6e3a1;
+    border-bottom: solid #a6e3a1;
+    text-style: bold;
+}
+
+
+MarkdownTable {
+    background: #181825;
+    border: tall #313244;
+    margin: 1 0;
+}
+
+MarkdownTableContent {
+    color: #cdd6f4;
+    grid-gutter: 1 2;
+    keyline: thin #313244;
+}
+
+MarkdownTableContent > .header {
+    color: #89b4fa;
+    text-style: bold;
+    background: #1e1e2e;
+}
+
+MarkdownTableContent > .cell {
+    color: #cdd6f4;
+}
