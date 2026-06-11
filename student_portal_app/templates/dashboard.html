@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Главная — Student Portal{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-block">
+            <div class="user-card">
+                <div class="user-card-avatar">👤</div>
+                <div class="user-card-name">{{ current_user.full_name }}</div>
+                <div class="user-card-role">
+                    <span class="badge badge-{{ current_user.role }}">{{ role_labels[current_user.role] }}</span>
+                </div>
+                {% if current_user.group_name %}
+                <div class="user-card-group">Группа: {{ current_user.group_name }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Навигация</div>
+            <ul class="sidebar-menu">
+                <li><a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">· Главная страница</a></li>
+                <li><a href="{{ url_for('courses') }}">· Учебные курсы</a></li>
+                <li><a href="{{ url_for('gradebook') }}">· Электронный журнал</a></li>
+                <li><a href="{{ url_for('reports') }}">· Отчётность</a></li>
+                {% if current_user.role == 'admin' %}
+                <li><a href="{{ url_for('admin') }}">· Администрирование</a></li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Информация</div>
+            <ul class="sidebar-menu">
+                <li><a href="#">· О системе</a></li>
+                <li><a href="#">· Помощь</a></li>
+                <li><a href="#">· Контакты</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="content-box">
+            <div class="content-box-header">
+                <span class="icon">📊</span> Панель управления
+            </div>
+            <div class="content-box-body">
+                <!-- Stats -->
+                {% if current_user.role == 'student' %}
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.courses_count }}</div>
+                        <div class="stat-label">Курсов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.avg_grade or '—' }}</div>
+                        <div class="stat-label">Средний балл</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.total_grades }}</div>
+                        <div class="stat-label">Оценок</div>
+                    </div>
+                </div>
+
+                {% elif current_user.role == 'teacher' %}
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.courses_count }}</div>
+                        <div class="stat-label">Ваших курсов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.students_count }}</div>
+                        <div class="stat-label">Студентов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.grades_given }}</div>
+                        <div class="stat-label">Оценок выставлено</div>
+                    </div>
+                </div>
+
+                {% elif current_user.role == 'admin' %}
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.users_count }}</div>
+                        <div class="stat-label">Пользователей</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.courses_count }}</div>
+                        <div class="stat-label">Курсов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.groups_count }}</div>
+                        <div class="stat-label">Групп</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ stats.enrollments_count }}</div>
+                        <div class="stat-label">Записей на курсы</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if current_user.role == 'student' and stats.recent_grades %}
+        <div class="content-box">
+            <div class="content-box-header">
+                <span class="icon">📝</span> Последние оценки
+            </div>
+            <div class="content-box-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Курс</th>
+                            <th>Оценка</th>
+                            <th>Дата</th>
+                            <th>Комментарий</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for g in stats.recent_grades %}
+                        <tr>
+                            <td>{{ g.course_name }}</td>
+                            <td><span class="badge badge-{{ g.grade }}">{{ g.grade }}</span></td>
+                            <td>{{ g.date }}</td>
+                            <td class="text-muted">{{ g.comment or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

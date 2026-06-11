@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Student Portal{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <a href="{{ url_for('dashboard') }}" class="header-logo">STUDENT<span>PORTAL</span></a>
+        <div class="header-right">
+            {% if current_user %}
+                <span>{{ current_user.full_name }}</span>
+                <a href="{{ url_for('logout') }}">Выход</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Войти в аккаунт</a>
+                <a href="{{ url_for('register') }}">Зарегистрироваться</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Nav Tabs -->
+    {% if current_user %}
+    <div class="nav-tabs">
+        <a href="{{ url_for('dashboard') }}" class="nav-tab {{ 'active' if request.endpoint == 'dashboard' }}">Главная</a>
+        <a href="{{ url_for('courses') }}" class="nav-tab {{ 'active' if request.endpoint in ('courses', 'course_journal') }}">Курсы</a>
+        {% if current_user.role == 'teacher' %}
+        <a href="{{ url_for('courses', my=1) }}" class="nav-tab {{ 'active' if request.endpoint == 'gradebook' }}">Журнал</a>
+        {% else %}
+        <a href="{{ url_for('gradebook') }}" class="nav-tab {{ 'active' if request.endpoint == 'gradebook' }}">Журнал</a>
+        {% endif %}
+        <a href="{{ url_for('reports') }}" class="nav-tab {{ 'active' if request.endpoint in ('reports', 'generate_report') }}">Отчёты</a>
+        {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('admin') }}" class="nav-tab {{ 'active' if request.endpoint == 'admin' }}" style="position:relative;">
+            Администрирование
+            {% if pending_requests_count > 0 %}
+            <span style="
+                background:#e74c3c;color:#fff;border-radius:10px;
+                font-size:10px;font-weight:bold;padding:1px 5px;
+                position:absolute;top:4px;right:4px;line-height:1.4;
+            ">{{ pending_requests_count }}</span>
+            {% endif %}
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div style="max-width:1100px;margin:8px auto;padding:0 10px;">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Page Content -->
+    {% block content %}{% endblock %}
+
+    <!-- Footer -->
+    {% if current_user %}
+    <div class="footer">
+        Student Portal &copy; 2026 | Astana Polytechnic | Все права защищены
+    </div>
+    {% endif %}
+
+    <!-- Table Sort -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('table.table').forEach(function (table) {
+            var headers = table.querySelectorAll('thead th');
+            headers.forEach(function (th, colIndex) {
+                th.style.cursor = 'pointer';
+                th.style.userSelect = 'none';
+                th.dataset.order = 'none';
+
+                th.addEventListener('click', function () {
+                    var tbody = table.querySelector('tbody');
+                    if (!tbody) return;
+                    var rows = Array.from(tbody.querySelectorAll('tr'));
+                    var asc = th.dataset.order !== 'asc';
+
+                    // Reset all headers
+                    headers.forEach(function (h) {
+                        h.dataset.order = 'none';
+                        h.textContent = h.textContent.replace(/ [▲▼]$/, '');
+                    });
+
+                    rows.sort(function (a, b) {
+                        var aText = (a.cells[colIndex] ? a.cells[colIndex].textContent : '').trim();
+                        var bText = (b.cells[colIndex] ? b.cells[colIndex].textContent : '').trim();
+                        var aNum = parseFloat(aText.replace(',', '.'));
+                        var bNum = parseFloat(bText.replace(',', '.'));
+                        if (!isNaN(aNum) && !isNaN(bNum)) {
+                            return asc ? aNum - bNum : bNum - aNum;
+                        }
+                        // Date detection (YYYY-MM-DD)
+                        if (/^\d{4}-\d{2}-\d{2}$/.test(aText) && /^\d{4}-\d{2}-\d{2}$/.test(bText)) {
+                            return asc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+                        }
+                        return asc ? aText.localeCompare(bText, 'ru') : bText.localeCompare(aText, 'ru');
+                    });
+
+                    rows.forEach(function (row) { tbody.appendChild(row); });
+                    th.dataset.order = asc ? 'asc' : 'desc';
+                    th.textContent = th.textContent + (asc ? ' ▲' : ' ▼');
+                });
+            });
+        });
+    });
+    </script>
+</body>
+</html>

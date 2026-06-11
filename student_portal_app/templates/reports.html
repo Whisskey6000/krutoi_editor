@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}Отчётность — Student Portal{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Отчёты</div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{{ url_for('reports', type='academic') }}"
+                       class="{{ 'active' if quick_type == 'academic' }}">
+                        · Академическая справка
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('reports', type='rating') }}"
+                       class="{{ 'active' if quick_type == 'rating' }}">
+                        · Рейтинг студентов
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        {% if report %}
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Сформирован</div>
+            <div style="padding:10px 14px;font-size:12px;color:#666;">
+                {% if report.type == 'academic' and report.student %}
+                    <strong>{{ report.student.full_name }}</strong><br>
+                    Группа: {{ report.student.group_name or '—' }}<br>
+                    Средний балл: <strong>{{ report.overall_avg }}</strong>
+                {% elif report.type == 'rating' %}
+                    Рейтинг по {{ report.students|length }} студентам
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <!-- Форма для академической справки -->
+        {% if quick_type == 'academic' or (not quick_type and not report) %}
+        <div class="content-box">
+            <div class="content-box-header">
+                <span class="icon">📄</span> Академическая справка
+            </div>
+            <div class="content-box-body">
+                {% if current_user.role == 'student' %}
+                <!-- Студент: просто кнопка — справка для себя -->
+                <form method="POST" action="{{ url_for('generate_report') }}">
+                    <input type="hidden" name="report_type" value="academic">
+                    <p style="font-size:12px;color:#666;margin-bottom:10px;">
+                        Справка будет сформирована для вашего аккаунта: <strong>{{ current_user.full_name }}</strong>
+                    </p>
+                    <button type="submit" class="btn btn-primary">Сформировать справку</button>
+                </form>
+                {% else %}
+                <!-- Учитель / Админ: выбор студента -->
+                <form method="POST" action="{{ url_for('generate_report') }}">
+                    <input type="hidden" name="report_type" value="academic">
+                    <div class="form-group">
+                        <label class="form-label">Выберите студента *</label>
+                        <select name="student_id" class="form-control" required>
+                            <option value="">— Выберите студента —</option>
+                            {% set current_group = namespace(name='') %}
+                            {% for s in students_list %}
+                                {% if s.group_name != current_group.name %}
+                                    {% set current_group.name = s.group_name %}
+                                    <optgroup label="{{ s.group_name or 'Без группы' }}">
+                                {% endif %}
+                                <option value="{{ s.id }}">{{ s.full_name }}</option>
+                                {% if loop.last %}</optgroup>{% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Сформировать справку</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Форма для рейтинга -->
+        {% if quick_type == 'rating' or (not quick_type and not report) %}
+        <div class="content-box">
+            <div class="content-box-header">
+                <span class="icon">🏆</span> Рейтинг студентов
+            </div>
+            <div class="content-box-body">
+                <form method="POST" action="{{ url_for('generate_report') }}">
+                    <input type="hidden" name="report_type" value="rating">
+                    <div style="display:flex;gap:10px;align-items:flex-end;">
+                        <div class="form-group" style="flex:1;">
+                            <label class="form-label">Фильтр по группе</label>
+                            <select name="filter_group_id" class="form-control">
+                                <option value="">— Все группы —</option>
+                                {% for g in groups_list %}
+                                <option value="{{ g.id }}"
+                                    {% if report and report.filter_group_id == g.id|string %}selected{% endif %}>
+                                    {{ g.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">Сформировать</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Результат: Академическая справка -->
+        {% if report and report.type == 'academic' and report.student %}
+        <div class="content-box">
+            <div class="content-box-header">
+                <span class="icon">📊</span> Академическая справка
+            </div>
+            <div class="content-box-body">
+                <div class="report-section">
+                    <h3>Данные студента</h3>
+                    <table class="table" style="max-width:500px;">
+                        <tr><td style="width:180px;" class="text-bold">ФИО</td><td>{{ report.student.full_name }}</td></tr>
+                        <tr><td class="text-bold">Группа</td><td>{{ report.student.group_name or '—' }}</td></tr>
+                        <tr><td class="text-bold">Email</td><td>{{ report.student.email or '—' }}</td></tr>
+                        <tr><td class="text-bold">Общий средний балл</td><td>
+                            {% if report.overall_avg %}
+                            <strong>{{ report.overall_avg }}</strong>
+                            {% else %}—{% endif %}
+                        </td></tr>
+                    </table>
+                </div>
+
+                <div class="report-section">
+                    <h3>Успеваемость по дисциплинам</h3>
+                    {% if report.courses %}
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Дисциплина</th>
+                                <th>Средний балл</th>
+                                <th>Оценок</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in report.courses %}
+                            <tr>
+                                <td>{{ c.name }}</td>
+                                <td>
+                                    {% if c.avg_grade %}
+                                    <span class="badge badge-{{ c.avg_grade|int }}">{{ '%.1f'|format(c.avg_grade) }}</span>
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td>{{ c.grades_count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted">Нет записей на курсы.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Результат: Рейтинг -->
+        {% if report and report.type == 'rating' %}
+        <div class="content-box">
+            <div class="content-box-header">
+                <span class="icon">🏆</span> Рейтинг студентов
+            </div>
+            <div class="content-box-body">
+                {% if report.students %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>ФИО</th>
+                            <th>Группа</th>
+                            <th>Средний балл</th>
+                            <th>Оценок</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in report.students %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ s.full_name }}</td>
+                            <td>{{ s.group_name or '—' }}</td>
+                            <td>
+                                {% if s.avg_grade %}
+                                <strong>{{ '%.2f'|format(s.avg_grade) }}</strong>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>{{ s.grades_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state"><span class="icon">📭</span>Нет данных</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

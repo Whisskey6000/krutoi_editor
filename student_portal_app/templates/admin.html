@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% block title %}Администрирование — Student Portal{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Управление</div>
+            <ul class="sidebar-menu">
+                <li><a href="#section-requests">· Запросы <span style="background:#e74c3c;color:#fff;border-radius:10px;padding:1px 5px;font-size:10px;">{{ pending_requests|length }}</span></a></li>
+                <li><a href="#section-groups">· Группы</a></li>
+                <li><a href="#section-courses">· Курсы</a></li>
+                <li><a href="#section-grades">· Оценки</a></li>
+                <li><a href="#section-users">· Пользователи</a></li>
+            </ul>
+        </div>
+
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Быстрая статистика</div>
+            <div style="padding:8px 14px;font-size:12px;color:#666;">
+                <div style="display:flex;justify-content:space-between;padding:3px 0;">
+                    <span>Групп:</span> <strong>{{ groups|length }}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:3px 0;">
+                    <span>Курсов:</span> <strong>{{ courses|length }}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:3px 0;">
+                    <span>Студентов:</span> <strong>{{ students|length }}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:3px 0;">
+                    <span>Преподавателей:</span> <strong>{{ teachers|length }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <!-- Pending Requests -->
+        <div class="content-box" id="section-requests" style="margin-bottom:12px;">
+            <div class="content-box-header">
+                <span class="icon">🔔</span> Запросы на изменение оценок
+                {% if pending_requests %}
+                <span class="badge" style="background:#e74c3c;color:#fff;margin-left:8px;">{{ pending_requests|length }}</span>
+                {% endif %}
+            </div>
+            <div class="content-box-body">
+                {% if pending_requests %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Курс</th>
+                            <th>Студент</th>
+                            <th>Оценка</th>
+                            <th>Причина</th>
+                            <th style="width:200px;">Решение</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in pending_requests %}
+                        <tr>
+                            <td style="font-size:11px;">{{ r.created_at[:10] }}</td>
+                            <td>{{ r.course_name }}</td>
+                            <td>{{ r.student_name }}<br><span style="font-size:10px;color:#888;">От: {{ r.teacher_name }}</span></td>
+                            <td>
+                                <span class="badge badge-{{ r.old_grade }}">{{ r.old_grade }}</span>
+                                ➜
+                                <span class="badge badge-{{ r.requested_grade }}">{{ r.requested_grade }}</span>
+                            </td>
+                            <td style="font-size:11px;">{{ r.reason }}<br><em>Коммент: {{ r.requested_comment or '—' }}</em></td>
+                            <td>
+                                <details style="display:inline;">
+                                    <summary class="btn btn-secondary btn-sm" style="display:inline-block;cursor:pointer;list-style:none;">Действия</summary>
+                                    <div style="background:#fffef5;border:1px solid #e8d88a;border-radius:3px;
+                                                padding:10px;margin-top:6px;position:absolute;z-index:10;
+                                                min-width:260px;box-shadow:0 2px 8px rgba(0,0,0,0.12);right:20px;">
+                                        <form method="POST" action="{{ url_for('approve_grade_request', req_id=r.id) }}" style="margin-bottom:6px;">
+                                            <input type="text" name="admin_note" class="form-control" placeholder="Заметка (опционально)" style="margin-bottom:6px;font-size:11px;">
+                                            <button type="submit" class="btn btn-success btn-sm" style="width:100%;">✅ Одобрить изменение</button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('reject_grade_request', req_id=r.id) }}">
+                                            <input type="text" name="admin_note" class="form-control" placeholder="Причина отказа (опционально)" style="margin-bottom:6px;font-size:11px;">
+                                            <button type="submit" class="btn btn-danger btn-sm" style="width:100%;">❌ Отклонить</button>
+                                        </form>
+                                    </div>
+                                </details>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <span class="icon">✅</span>
+                    Все запросы обработаны
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Admin Grid: Groups & Courses -->
+        <div class="admin-grid">
+            <!-- Groups -->
+            <div class="content-box" id="section-groups">
+                <div class="content-box-header">
+                    <span class="icon">👥</span> Группы
+                </div>
+                <div class="content-box-body">
+                    <form method="POST" action="{{ url_for('add_group') }}" class="form-inline mb-12">
+                        <div class="form-group">
+                            <input type="text" name="group_name" class="form-control" placeholder="Название группы" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Добавить</button>
+                    </form>
+                    {% if groups %}
+                    <table class="table">
+                        <thead><tr><th>Название</th><th style="width:60px;"></th></tr></thead>
+                        <tbody>
+                            {% for g in groups %}
+                            <tr>
+                                <td>{{ g.name }}</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('delete_group', group_id=g.id) }}" style="display:inline;">
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Удалить группу?')">✕</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="text-muted text-center" style="padding:10px;">Нет групп</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Courses -->
+            <div class="content-box" id="section-courses">
+                <div class="content-box-header">
+                    <span class="icon">📚</span> Курсы
+                </div>
+                <div class="content-box-body">
+                    <form method="POST" action="{{ url_for('add_course') }}" style="margin-bottom:12px;">
+                        <div class="form-group">
+                            <input type="text" name="course_name" class="form-control" placeholder="Название курса" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" name="course_desc" class="form-control" placeholder="Описание">
+                        </div>
+                        <div class="form-group">
+                            <select name="teacher_id" class="form-control">
+                                <option value="">— Преподаватель —</option>
+                                {% for t in teachers %}
+                                <option value="{{ t.id }}">{{ t.full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Добавить курс</button>
+                    </form>
+                    {% if courses %}
+                    <table class="table">
+                        <thead><tr><th>Курс</th><th>Преподаватель</th><th style="width:60px;"></th></tr></thead>
+                        <tbody>
+                            {% for c in courses %}
+                            <tr>
+                                <td>{{ c.name }}</td>
+                                <td class="text-muted">{{ c.teacher_name or '—' }}</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('delete_course', course_id=c.id) }}" style="display:inline;">
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Удалить курс?')">✕</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="text-muted text-center" style="padding:10px;">Нет курсов</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Grades -->
+        <div class="content-box mt-12" id="section-grades">
+            <div class="content-box-header">
+                <span class="icon">📝</span> Выставление оценки
+            </div>
+            <div class="content-box-body">
+                <form method="POST" action="{{ url_for('add_grade') }}">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+                        <div class="form-group" style="flex:1;min-width:180px;">
+                            <label class="form-label">Студент</label>
+                            <select name="student_id" class="form-control" required>
+                                <option value="">— Выберите —</option>
+                                {% for s in students %}
+                                <option value="{{ s.id }}">{{ s.full_name }} ({{ s.group_name or '—' }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:180px;">
+                            <label class="form-label">Курс</label>
+                            <select name="course_id" class="form-control" required>
+                                <option value="">— Выберите —</option>
+                                {% for c in courses %}
+                                <option value="{{ c.id }}">{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group" style="width:80px;">
+                            <label class="form-label">Оценка</label>
+                            <select name="grade" class="form-control" required>
+                                <option value="5">5</option>
+                                <option value="4">4</option>
+                                <option value="3">3</option>
+                                <option value="2">2</option>
+                                <option value="1">1</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="width:140px;">
+                            <label class="form-label">Дата</label>
+                            <input type="date" name="date" class="form-control" value="2026-06-11" required>
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:150px;">
+                            <label class="form-label">Комментарий</label>
+                            <input type="text" name="comment" class="form-control" placeholder="Необязательно">
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">Выставить</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Users -->
+        <div class="content-box mt-12" id="section-users">
+            <div class="content-box-header">
+                <span class="icon">👤</span> Пользователи системы
+            </div>
+            <div class="content-box-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Логин</th>
+                            <th>ФИО</th>
+                            <th>Роль</th>
+                            <th>Группа</th>
+                            <th style="width:60px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in all_users %}
+                        <tr>
+                            <td>{{ u.id }}</td>
+                            <td>{{ u.username }}</td>
+                            <td>{{ u.full_name }}</td>
+                            <td><span class="badge badge-{{ u.role }}">{{ role_labels[u.role] }}</span></td>
+                            <td>{{ u.group_name or '—' }}</td>
+                            <td>
+                                {% if u.id != current_user.id %}
+                                <form method="POST" action="{{ url_for('delete_user', user_id=u.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Удалить пользователя {{ u.full_name }}?')">✕</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}{{ course.name }} — Журнал — Student Portal{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Курс</div>
+            <div style="padding:10px 14px;font-size:12px;color:#555;">
+                <div style="font-weight:bold;color:#333;margin-bottom:6px;">{{ course.name }}</div>
+                {% if course.group_name %}
+                <div>Группа: <span class="badge badge-student">{{ course.group_name }}</span></div>
+                {% endif %}
+                <div style="margin-top:4px;">Преподаватель: {{ course.teacher_name or '—' }}</div>
+                <div style="margin-top:4px;">Студентов: {{ students|length }}</div>
+            </div>
+        </div>
+
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Навигация</div>
+            <ul class="sidebar-menu">
+                <li><a href="{{ url_for('courses') }}">← Все курсы</a></li>
+                <li><a href="{{ url_for('gradebook') }}">· Общий журнал</a></li>
+            </ul>
+        </div>
+
+        <!-- Сводка по студентам -->
+        {% if students %}
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Студенты</div>
+            <div style="padding:8px 14px;">
+                {% for s in students %}
+                <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted #eee;font-size:11px;">
+                    <a href="#student-{{ s.id }}" style="color:#555;">{{ s.full_name.split()[0] }} {{ s.full_name.split()[1] if s.full_name.split()|length > 1 else '' }}</a>
+                    {% if avgs.get(s.id) %}
+                    <span class="badge badge-{{ avgs[s.id]|int }}">{{ avgs[s.id] }}</span>
+                    {% else %}
+                    <span style="color:#ccc;">—</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <!-- Форма добавления оценки (только учитель/админ) -->
+        {% if can_add_grades %}
+        <div class="content-box">
+            <div class="content-box-header">
+                <span class="icon">➕</span> Выставить оценку
+            </div>
+            <div class="content-box-body">
+                <form method="POST" action="{{ url_for('add_grade_course', course_id=course.id) }}">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+                        <div class="form-group" style="flex:2;min-width:180px;">
+                            <label class="form-label">Студент *</label>
+                            <select name="student_id" class="form-control" required>
+                                <option value="">— Выберите —</option>
+                                {% for s in students %}
+                                <option value="{{ s.id }}">{{ s.full_name }}{% if s.group_name %} ({{ s.group_name }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group" style="width:70px;">
+                            <label class="form-label">Оценка *</label>
+                            <select name="grade" class="form-control" required>
+                                <option value="5">5</option>
+                                <option value="4" selected>4</option>
+                                <option value="3">3</option>
+                                <option value="2">2</option>
+                                <option value="1">1</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="width:145px;">
+                            <label class="form-label">Дата *</label>
+                            <input type="date" name="date" class="form-control"
+                                   value="2026-06-11" required>
+                        </div>
+                        <div class="form-group" style="flex:2;min-width:160px;">
+                            <label class="form-label">Комментарий</label>
+                            <input type="text" name="comment" class="form-control"
+                                   placeholder="За что / примечание">
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">Выставить</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Список студентов и их оценки -->
+        {% if students %}
+            {% for s in students %}
+            <div class="content-box" id="student-{{ s.id }}">
+                <div class="content-box-header" style="justify-content:space-between;">
+                    <div>
+                        <span class="icon">👤</span>
+                        {{ s.full_name }}
+                        {% if s.group_name %}
+                        <span class="badge badge-student" style="margin-left:6px;font-size:10px;">{{ s.group_name }}</span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size:12px;color:#888;">
+                        Средний балл:
+                        {% if avgs.get(s.id) %}
+                            <strong class="badge badge-{{ avgs[s.id]|int }}">{{ avgs[s.id] }}</strong>
+                        {% else %}
+                            <span style="color:#ccc;">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="content-box-body" style="padding:0;">
+                    {% set student_grades = grades_by_student.get(s.id, []) %}
+                    {% if student_grades %}
+                    <table class="table" style="margin:0;">
+                        <thead>
+                            <tr>
+                                <th>Оценка</th>
+                                <th>Дата</th>
+                                <th>Комментарий</th>
+                                {% if can_direct_edit or can_request_edit %}
+                                <th style="width:200px;">Изменить</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for g in student_grades %}
+                            <tr>
+                                <td><span class="badge badge-{{ g.grade }}">{{ g.grade }}</span></td>
+                                <td>{{ g.date }}</td>
+                                <td class="text-muted" style="font-size:11px;">{{ g.comment or '—' }}</td>
+                                {% if can_direct_edit or can_request_edit %}
+                                <td>
+                                    {% if g.id in pending_grade_ids %}
+                                        <span class="badge badge-student" style="background:#e67e22;">⏳ Запрос отправлен</span>
+                                    {% else %}
+                                    <details style="display:inline;">
+                                        <summary class="btn btn-secondary btn-sm"
+                                                 style="display:inline-block;cursor:pointer;list-style:none;">
+                                            ✏️ Изменить
+                                        </summary>
+                                        <div style="background:#fffef5;border:1px solid #e8d88a;border-radius:3px;
+                                                    padding:10px;margin-top:6px;position:absolute;z-index:10;
+                                                    min-width:320px;box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+                                            
+                                            {% if can_direct_edit %}
+                                            <form method="POST" action="{{ url_for('edit_grade', grade_id=g.id) }}">
+                                                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+                                                    <div class="form-group" style="width:70px;">
+                                                        <label class="form-label">Оценка</label>
+                                                        <select name="grade" class="form-control">
+                                                            {% for v in [5,4,3,2,1] %}
+                                                            <option value="{{ v }}" {{ 'selected' if v == g.grade }}>{{ v }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group" style="flex:1;min-width:180px;">
+                                                        <label class="form-label">Комментарий <span style="color:#c0392b;">*</span></label>
+                                                        <input type="text" name="comment" class="form-control"
+                                                               placeholder="Причина изменения..."
+                                                               value="{{ g.comment or '' }}" required>
+                                                    </div>
+                                                </div>
+                                                <div style="display:flex;gap:6px;">
+                                                    <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+                                                </div>
+                                            </form>
+                                            <form method="POST" action="{{ url_for('delete_grade', grade_id=g.id) }}"
+                                                  style="margin-top:6px;"
+                                                  onsubmit="return confirm('Удалить оценку {{ g.grade }}?')">
+                                                <button type="submit" class="btn btn-danger btn-sm">🗑 Удалить (Админ)</button>
+                                            </form>
+                                            
+                                            {% elif can_request_edit %}
+                                            <form method="POST" action="{{ url_for('request_grade_edit', grade_id=g.id) }}">
+                                                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+                                                    <div class="form-group" style="width:70px;">
+                                                        <label class="form-label">Новая</label>
+                                                        <select name="grade" class="form-control">
+                                                            {% for v in [5,4,3,2,1] %}
+                                                            <option value="{{ v }}" {{ 'selected' if v == g.grade }}>{{ v }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group" style="flex:1;min-width:180px;">
+                                                        <label class="form-label">Новый коммент</label>
+                                                        <input type="text" name="comment" class="form-control"
+                                                               placeholder="Новый комментарий"
+                                                               value="{{ g.comment or '' }}">
+                                                    </div>
+                                                    <div class="form-group" style="width:100%;">
+                                                        <label class="form-label">Причина запроса <span style="color:#c0392b;">*</span></label>
+                                                        <input type="text" name="reason" class="form-control"
+                                                               placeholder="Почему нужно изменить оценку?" required>
+                                                    </div>
+                                                </div>
+                                                <div style="display:flex;gap:6px;">
+                                                    <button type="submit" class="btn btn-primary btn-sm">Запросить изменение</button>
+                                                </div>
+                                            </form>
+                                            {% endif %}
+                                            
+                                        </div>
+                                    </details>
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div style="padding:12px 14px;font-size:12px;color:#aaa;">
+                        Оценок по этой дисциплине нет.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="content-box">
+            <div class="content-box-body">
+                <div class="empty-state">
+                    <span class="icon">📭</span>
+                    На этот курс ещё не записаны студенты
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Fix details dropdown positioning */
+details[open] > div {
+    display: block;
+}
+td { position: relative; }
+</style>
+{% endblock %}

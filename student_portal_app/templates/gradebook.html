@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Электронный журнал — Student Portal{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        {% if current_user.role == 'student' %}
+        <!-- Студент: средний балл + по курсам -->
+        {% if avg_grade %}
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Средний балл</div>
+            <div style="padding:14px;text-align:center;">
+                <div style="font-size:32px;font-weight:bold;color:#333;">{{ avg_grade }}</div>
+                <div style="font-size:11px;color:#888;">общий средний</div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if course_avgs %}
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">По дисциплинам</div>
+            <div style="padding:8px 14px;">
+                {% for ca in course_avgs %}
+                <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px dotted #eee;">
+                    <span style="color:#555;font-size:11px;">{{ ca.name|truncate(22) }}</span>
+                    <strong>{{ '%.1f'|format(ca.avg_grade) }}</strong>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- Учитель / Админ: фильтры -->
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Фильтр по группе</div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{{ url_for('gradebook') }}"
+                       class="{{ 'active' if not filter_group_id }}">
+                        · Все группы
+                    </a>
+                </li>
+                {% for g in all_groups %}
+                <li>
+                    <a href="{{ url_for('gradebook', group_id=g.id, course_id=filter_course_id) }}"
+                       class="{{ 'active' if filter_group_id == g.id }}">
+                        · {{ g.name }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        {% if all_courses_filter %}
+        <div class="sidebar-block">
+            <div class="sidebar-block-title">Фильтр по дисциплине</div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{{ url_for('gradebook', group_id=filter_group_id) }}"
+                       class="{{ 'active' if not filter_course_id }}">
+                        · Все дисциплины
+                    </a>
+                </li>
+                {% for c in all_courses_filter %}
+                <li>
+                    <a href="{{ url_for('gradebook', group_id=filter_group_id, course_id=c.id) }}"
+                       class="{{ 'active' if filter_course_id == c.id }}">
+                        · {{ c.name|truncate(24) }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if filter_group_id or filter_course_id %}
+        <div class="sidebar-block">
+            <div style="padding:8px 14px;">
+                <a href="{{ url_for('gradebook') }}" class="btn btn-secondary btn-sm" style="width:100%;text-align:center;">
+                    ✕ Сбросить фильтры
+                </a>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="content-box">
+            <div class="content-box-header">
+                <span class="icon">📋</span> Электронный журнал
+                {% if filter_group_id or filter_course_id %}
+                <span style="font-size:11px;font-weight:normal;color:#888;margin-left:8px;">
+                    — применён фильтр ({{ grades|length }} записей)
+                </span>
+                {% endif %}
+            </div>
+            <div class="content-box-body">
+                {% if grades %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            {% if current_user.role != 'student' %}
+                            <th>Студент</th>
+                            <th>Группа</th>
+                            {% endif %}
+                            <th>Дисциплина</th>
+                            <th>Оценка</th>
+                            <th>Дата</th>
+                            <th>Комментарий</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for g in grades %}
+                        <tr>
+                            {% if current_user.role != 'student' %}
+                            <td>{{ g.student_name }}</td>
+                            <td>
+                                {% if g.group_name %}
+                                <a href="{{ url_for('gradebook', group_id=filter_group_id or '') }}">
+                                    {{ g.group_name }}
+                                </a>
+                                {% else %}—{% endif %}
+                            </td>
+                            {% endif %}
+                            <td>{{ g.course_name }}</td>
+                            <td><span class="badge badge-{{ g.grade }}">{{ g.grade }}</span></td>
+                            <td>{{ g.date }}</td>
+                            <td class="text-muted" style="font-size:11px;">{{ g.comment or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <span class="icon">📭</span>
+                    {% if filter_group_id or filter_course_id %}
+                        Нет оценок по выбранным фильтрам
+                    {% else %}
+                        Оценок пока нет
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
